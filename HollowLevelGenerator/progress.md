@@ -1,0 +1,90 @@
+Original prompt: Create a webapp for me where I can create grid projects with different entities per grid item. It should include sample room layouts, paintable ground/hole/rock/enemy spawn/item spawn content, shape painting, and orthogonal connectivity similar to The Binding of Isaac concept room layouts.
+
+2026-04-24:
+- Investigating a regression where toolbar buttons, project switching, create project, and painting all appear non-responsive.
+- Next step: reproduce in browser automation and inspect the first runtime error before changing code.
+- Verified in a clean Chromium session that the UI still works normally, which pointed away from layout/click wiring as the sole cause.
+- Identified a strong failure mode: `persist()` wrote directly to `localStorage` with no guard. If storage is blocked or throws, create/switch/paint all fail together.
+- Hardened persistence so storage failures degrade to session-only mode instead of breaking interactions.
+- Added safer delegated target resolution for toolbar/template/project/board handlers so browsers that surface non-element event targets do not break `.closest(...)` lookups.
+- Verification:
+- `node --check app.js` passes.
+- Browser probe with forced `localStorage.setItem()` failure still allowed create, template select, project switch, and hole painting.
+- Clean-browser probe still allowed create and hole painting with normal persistence.
+- Added larger grouped corner rounding for hole terrain, a visible secret-wall "X" sign in-editor, and a matching export secret-wall badge.
+- Added a bottom legend card to PNG/JPEG export so downloaded images carry their own symbol key.
+- Verified in browser that secret wall placement still works and PNG export downloads successfully.
+- Added visible perimeter wall rendering beyond room-footprint boundaries in both the live editor and PNG/JPEG export.
+- Verified visually with fresh editor and export screenshots that the room shell now appears around the full footprint.
+- Removed the manual N/S/E/W wall-side picker and switched doors/secret walls to automatic wall attachment.
+- Brush wall-anchor paints now use the nearest valid outer edge of the clicked tile; rectangle wall-anchor paints infer orientation from the selection shape.
+- Browser verification:
+- Clicking near the north edge of `(-6,-3)` created `Door on North`.
+- Clicking near the west edge of the same tile added `Door on West`.
+- Clicking near the east edge of `(6,0)` created `Secret wall entrance on East`.
+- A rectangle stamped across the top row created `Door on North` for every selected tile.
+
+- Added typed enemy spawn variants (standard, floating/flying, spitting pod, static shooter, spider-spawner cocoon) and decor height variants (short/medium/tall) with distinct markers, hover text, stats, and export rendering.
+- Added toolbar modifiers for enemy and decor paints, plus keyboard shortcuts for variants.
+- Made the live legend and PNG/JPEG export legend show only elements actually used in the active design.
+- Verification: node --check app.js passed; browser smoke test placed floating/flying enemy + tall decor and confirmed the live legend plus exported PNG only listed Ground, Decor · Tall, and Enemy · Floating / Flying.
+- Added diagonal terrain-corner connectors for ground and hole groups so irregular shapes render with rounded inside turns in both the live grid and PNG/JPEG export.
+- Verification: node --check app.js passed; browser smoke test painted an L-shaped hole cluster and confirmed rounded terrain corners in the editor and exported PNG.
+- Added named ground sprite variants based on exposed sides, including middle, edge, corner, passage, end, and isolated single tile states.
+- Ground sprite shading now renders in the live editor and PNG/JPEG export, with DOM verification for topLeftCorner, top, isolatedSingleTile, and bottomLeftCorner states.
+- Added undo/redo buttons and Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z shortcuts, with brush drags grouped as one history step and rectangle fills/transforms handled as single steps.
+- Added mirror horizontal, mirror vertical, rotate clockwise, and rotate counterclockwise actions. Transform buttons are enabled only when the active room footprint can support the transform without cropping the layout.
+- Verification: node --check app.js passed; browser smoke test confirmed paint undo/redo, mirror undo/redo, and a square-room north door rotating into an east door.
+- Added saved custom room templates with an origin-centered footprint editor. Users can set odd width/height, click or drag mini cells on/off, fill/clear/blank the shape, seed it from the selected template, and save it into the normal template picker.
+- Added project collections with creation, filter chips, per-new-project assignment, per-active-project assignment, project-card badges, persisted state, JSON export metadata, and image-export collection labeling.
+- Updated state/history persistence so custom templates and collections are included in undo/redo snapshots and localStorage, while older saves still normalize safely.
+- Verification: node --check app.js passed; web_game_playwright_client loaded the page and screenshot successfully; browser E2E created a Floor 1 collection, saved a 5x5 custom template with two missing corners, created/painted a project from it, confirmed persistence after reload, and reported no console errors.
+- Additional verification: browser undo/redo test confirmed saving a custom template can be undone/redone without dropping the already-created collection.
+- Reworked room templates to exact Binding-of-Isaac-style 13 x 7 chunks: 1x1 = 13 x 7, side-by-side 2x1 = 26 x 7, stacked 1x2 = 13 x 14, 2x2 = 26 x 14, and L room = three 13 x 7 chunks inside a 26 x 14 footprint.
+- Added old template ID aliases so existing `25 x 7`, `13 x 13`, and `25 x 25` saved projects migrate to the new chunk-correct templates on load.
+- Updated custom template editor to use 13-wide and 7-high step sizes, and changed mini-grid editing to toggle whole 13 x 7 chunks so custom footprints remain chunk-valid.
+- Updated mirror transform math to use template bounds, which keeps mirror tools working on even-width rooms such as 26 x 7.
+- Verification: node --check app.js passed; web_game_playwright_client screenshot looked correct; browser E2E confirmed built-in cell counts/bounds (91, 182, 182, 364, 273), even-width mirror and door direction transforms, chunk-based custom template creation, and legacy ID migration with no console errors.
+- Added an editor-only door anchor helper overlay. Green ticks render on every valid wall-edge anchor derived from the active room template, with an Actions toggle to show/hide them.
+- The helper is UI-only and not saved as project data. Verification compared PNG export data with the helper visible vs hidden and confirmed exports were identical.
+- Verification: node --check app.js passed; browser E2E confirmed 40 helper anchors on a 13 x 7 room (13 north, 13 south, 7 east, 7 west), toggle off/on, real door placement, occupied-helper styling, identical exports, and no console errors.
+- Added first-class room metadata for room type, reward type, difficulty, tags, notes, intended entry direction, encounter purpose, chapter/floor, and prototype status in the bottom inspector.
+- Metadata now persists in saved projects, duplicates with projects, survives layout reset, imports from JSON, and exports at both top-level and inside the project payload.
+- JSON export is now version 2 and includes `entitySummary` counts plus `entityGroups` coordinate groups for ground, hole, rock, item, every enemy variant, every decor variant, doors, and secret wall entrances.
+- Verification: node --check app.js passed; web_game_playwright_client loaded the page and screenshot successfully; browser E2E edited metadata, painted hole/rock/flying enemy/tall decor/item/door/secret wall, exported JSON, and asserted metadata plus grouped entity counts with no console errors.
+- Updated valid door/secret-wall anchors to only the exact center of each exposed 13 x 7 chunk edge instead of every boundary tile.
+- Continuous perimeter wall rendering still uses the full room boundary, while helper ticks and wall-anchor placement use the stricter chunk-middle rule.
+- Verification: node --check app.js passed; web_game_playwright_client loaded the app; browser E2E confirmed anchor sets for 1x1 (4), 2x1 (6), 1x2 (6), 2x2 (8), and L room (8), including L-room concave anchors, and confirmed non-center boundary clicks do not place doors.
+- Added a Floor Builder workspace tab that treats each real collection as a floor graph, while All and Unsorted show a collection/floor prompt instead of enabling graph edits.
+- Added persisted `floorGraphs` keyed by collection id, with reusable room nodes `{ id, projectId, x, y }`, room palette placement, node duplication/deletion, snapped drag-to-move, and overlap blocking.
+- Floor validation now derives room chunk footprints and existing room door/secret-wall anchors without mutating rooms: Door-to-Door creates normal edges, Secret-to-Door/Secret creates dashed secret edges, open anchors warn, missing opposite anchors warn, and wall-only adjacency stays allowed.
+- Added Floor JSON export with collection info, graph nodes, derived edges, warnings, referenced room metadata/templates/summaries, and full referenced project payloads.
+- Extended JSON import to detect floor payloads, recreate or merge the collection by name, import referenced rooms, and restore the floor graph.
+- Added Floor PNG export with minimap nodes, room names/types, normal/secret connections, warning markers, and a used-elements legend.
+- Verification: node --check app.js passed; web_game_playwright_client loaded the app; Playwright E2E created connected door rooms, confirmed one-door-to-void warning before connection, moved a node into a valid Door-to-Door edge with zero warnings, verified persistence after reload, exported/imported floor JSON, exported a non-empty PNG, and placed 1x1, 2x1, 1x2, 2x2, and L rooms without footprint overlap.
+- Changed Floor Builder semantics so room doors and secret entrances are optional available anchors rather than mandatory exits. Unused anchors facing empty space no longer warn, and one-sided anchors beside another room are treated as unconnected walls; matching facing anchors still create normal/secret edges automatically.
+- Verification: node --check app.js passed; web_game_playwright_client loaded the app; focused Playwright E2E confirmed a room with unused door anchors plus a plain neighbor shows 0 warnings/0 connections, then swapping in a matching opposite door creates 1 connection with 0 warnings and no console errors.
+- Updated Floor Builder connection detection to scan actual touching 13 x 7 chunk boundaries between room footprints instead of only exact authored port pairs. Adjacent rooms now connect when either side offers an available door/secret anchor, while wall-to-wall adjacency with no anchors remains unconnected.
+- Fixed a `viewMap` regression caught during focused testing after the boundary-connection refactor.
+- Verification: node --check app.js passed; focused Playwright E2E confirmed one-sided normal anchors connect, no-anchor adjacency stays unconnected, one-sided secret anchors create secret edges, and the web_game_playwright_client smoke load/screenshot passed.
+- Added a room-level `Export Unity JSON` mode for importing layouts into Unity with `1 grid tile = 1 meter`.
+- Unity export payload uses schema `hollow-room-unity-layout` and includes explicit grid-to-Unity mapping (`x = grid.x`, `z = -grid.y`), room metadata, template/chunk footprint, every tile, floor/hole geometry, solid wall segments and wall runs, doors, secret wall entrances, enemy/item spawn points, rocks, decor height blocks, prefab keys, blocking hints, entity summary, and existing entity groups.
+- Verification: node --check app.js passed; focused Playwright E2E downloaded and parsed a mixed Unity export with a hole, north door, east secret entrance, flying enemy spawn, item spawn, rock, tall decor, prefab keys, and blocking hints; web_game_playwright_client smoke load/screenshot passed.
+- Added a room-level `Export RCP JSON` mode for Reality Composer Pro / RealityKit import pipelines.
+- Reality Composer Pro export payload uses schema `hollow-room-reality-composer-pro-scene` and includes a RealityKit-style scene manifest with a root entity, grouped child entities, a flat entity list, material definitions, primitive mesh sizes in meters, Y-up transforms, collision/physics hints, semantic tags, prefab keys, room metadata, template/chunk footprint, and existing entity groups. The RCP mapping uses `x = grid.x`, `z = grid.y`, so north maps to RealityKit `-Z`.
+- Verification: node --check app.js passed; focused Playwright E2E downloaded and parsed a mixed RCP export with a hole, north door, east secret entrance, flying enemy spawn, item spawn, rock, tall decor, RCP group entities, prefab keys, blocking hints, and RealityKit coordinate checks; web_game_playwright_client smoke load/screenshot passed.
+- Extended the existing Reality Composer Pro export with `hollowRuntime.schemaVersion = 2` while keeping `sceneGraph` unchanged.
+- The V2 runtime block now exports canonical identity, room metadata, actual dimensions, 13 x 7 chunk footprint data, authoritative `walkableTiles`, `holeTiles`, derived `floorRegions`, exposed chunk-face `doorPorts`, safe start, enemy/item spawns, obstacles, and decor. Door ports are generated only from exposed chunk faces, use stable directional IDs/lane ordering, and annotate each port as `door`, `secret`, or `available`.
+- Added Hollow-side Swift importer/runtime support in `/Users/martinjedrzejewski/Documents/GitHub/Hollow`: V2 Codable models, clear unsupported-schema errors, imported `RoomLayout`/obstacle/spawn conversion, exact door-port preservation, legacy direction/anchor synthesis, macro-room footprint/occupancy structures, explicit port-to-port branch connections, and a traversal resolver that prefers explicit imported-room topology before falling back to the legacy directional floor graph.
+- Tightened imported-room traversal so same-side multi-port rooms can resolve by explicit port ID, and the direction helper scans for a connected same-side port instead of collapsing to the first directional port.
+- Verification: `node --check app.js` passed; focused Hollow Runtime V2 Playwright export E2E passed for 1x1, 2x1, 1x2, 2x2, and L rooms, including stable ports, no `grid.y` in runtime data, internal seam filtering, door/secret annotation, walkability, safe start, spawns, obstacles, and decor; web_game_playwright_client smoke load/screenshot passed.
+- Hollow verification: targeted `xcodebuild test` for the three new V2 importer/traversal tests passed, including same-side multi-port preservation. The broad Hollow suite still has unrelated existing failures across gameplay/rewards/hub/visual tests, so use targeted V2 tests for this patch until those baseline failures are resolved.
+- Added a room-level `Export USDA Scene` option for RealityKit/USD workflows.
+- The USDA exporter reuses the existing Reality Composer Pro scene graph, writes a text `#usda 1.0` file with `metersPerUnit = 1` and `upAxis = "Y"`, creates root/group Xforms, USD Preview Surface materials, cube prims for terrain/walls/entrances/spawn markers/props, RealityKit-meter transforms, material bindings, and Hollow `customData` for project ID, semantic kind, prefab keys, tags, grid data, collision hints, and gameplay hints.
+- Verification: `node --check app.js` passed; focused Playwright E2E exported a mixed 26 x 7 room to `.usda` and confirmed USD header metadata, groups, materials, door/secret wall prims, spawn/prop prefab metadata, rotated wall/door transforms, material bindings, and no console errors; web_game_playwright_client smoke load/screenshot passed.
+- Added a Unity Editor importer under `Unity/HollowRoomUnityImporter/Editor/HollowRoomJsonImporter.cs` plus `Unity/HollowRoomUnityImporter/README.md`.
+- The Unity importer reads `hollow-room-unity-layout` JSON, creates a room hierarchy, imports floor/hole tiles, walls, doors, secret entrances, enemy/item spawn markers, rocks, and decor. It supports a `HollowRoomPrefabLibrary` asset for prefab-key mappings, primitive fallbacks, wall-run vs wall-segment import, door-gap skipping, optional colliders, static flags, and prefab scaling to exported meters.
+- Verification: parsed `/Users/martinjedrzejewski/Downloads/lmartinrafal-unity-room.json` with Node and statically checked the importer entry points. Unity compilation was not run because this workspace is not a Unity project.
+- Added `Tools > Hollow > Merge Selected Meshes` in `Unity/HollowRoomUnityImporter/Editor/HollowMeshMergeTool.cs`.
+- The merge tool collects selected MeshFilter/MeshRenderer objects, optionally includes children, combines into a new mesh under the common parent, preserves material submeshes, can save the mesh asset under `Assets/HollowMergedMeshes`, can add a MeshCollider, mark static, recalculate normals, and deactivate the original source tile objects. This is intended for optimizing imported ground tiles, walls, or other stable room geometry after layout authoring.
+- Updated the Unity importer README with the mesh merge workflow.

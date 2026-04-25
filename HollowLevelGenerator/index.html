@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hollow Room Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <main class="workspace">
+        <nav class="workspace-tabs" aria-label="Workspace">
+          <button
+            id="room-editor-tab"
+            class="workspace-tab is-selected"
+            type="button"
+            data-workspace-mode="room"
+          >
+            Room Editor
+          </button>
+          <button
+            id="floor-builder-tab"
+            class="workspace-tab"
+            type="button"
+            data-workspace-mode="floor"
+          >
+            Floor Builder
+          </button>
+        </nav>
+
+        <section class="panel panel--toolbar">
+          <div id="toolbar" class="toolbar"></div>
+          <div class="status-strip">
+            <div id="project-meta" class="status-strip__meta"></div>
+            <div id="hover-readout" class="status-strip__hover">
+              Hover a tile to inspect coordinates.
+            </div>
+          </div>
+        </section>
+
+        <section class="panel panel--board">
+          <div class="board-panel__header">
+            <div>
+              <p class="panel__eyebrow">Canvas</p>
+              <h2 id="board-title">Room Grid</h2>
+            </div>
+            <div id="board-summary" class="board-summary"></div>
+          </div>
+          <div class="board-scroll">
+            <div id="board-grid" class="board-grid"></div>
+            <div id="floor-builder" class="floor-builder" hidden></div>
+          </div>
+        </section>
+      </main>
+
+      <section class="lower-deck">
+        <div class="brand-card">
+          <p class="eyebrow">Concept Layout Editor</p>
+          <h1>Hollow Room Lab</h1>
+          <p class="brand-card__copy">
+            Build chunk-aligned room concepts with connected floor painting,
+            obstruction placement, and spawn markers inspired by dungeon room
+            blockouts.
+          </p>
+        </div>
+
+        <section class="panel panel--templates">
+          <div class="panel__header">
+            <p class="panel__eyebrow">New Project</p>
+            <h2>Room Templates</h2>
+          </div>
+          <label class="field">
+            <span>Project name</span>
+            <input
+              id="project-name-input"
+              type="text"
+              placeholder="Boss antechamber"
+              maxlength="60"
+            />
+          </label>
+          <label class="field">
+            <span>Collection</span>
+            <select id="project-collection-select"></select>
+          </label>
+          <div id="template-picker" class="template-picker"></div>
+          <div class="template-editor">
+            <div class="template-editor__header">
+              <div>
+                <p class="panel__eyebrow">Template Editor</p>
+                <h3>Custom Footprint</h3>
+              </div>
+              <button id="template-editor-from-selected-button" class="action action--compact">
+                From Selected
+              </button>
+            </div>
+            <label class="field">
+              <span>Template name</span>
+              <input
+                id="custom-template-name"
+                type="text"
+                placeholder="Secret shop elbow"
+                maxlength="60"
+              />
+            </label>
+            <div class="template-editor__size">
+              <label class="field">
+                <span>Width</span>
+                <input id="custom-template-width" type="number" min="13" max="52" step="13" />
+              </label>
+              <label class="field">
+                <span>Height</span>
+                <input id="custom-template-height" type="number" min="7" max="28" step="7" />
+              </label>
+            </div>
+            <div class="template-editor__actions">
+              <button id="template-editor-blank-button" class="action action--compact">
+                Blank
+              </button>
+              <button id="template-editor-fill-button" class="action action--compact">
+                Fill
+              </button>
+              <button id="template-editor-clear-button" class="action action--compact">
+                Clear
+              </button>
+              <button id="save-custom-template-button" class="action action--primary action--compact">
+                Save Template
+              </button>
+            </div>
+            <div id="custom-template-grid" class="template-editor__grid"></div>
+            <p id="custom-template-summary" class="template-editor__summary"></p>
+          </div>
+          <button id="create-project-button" class="action action--primary">
+            Create Project
+          </button>
+        </section>
+
+        <section class="panel panel--projects">
+          <div class="panel__header">
+            <p class="panel__eyebrow">Saved</p>
+            <h2>Projects</h2>
+          </div>
+          <div class="collection-tools">
+            <label class="field">
+              <span>New collection</span>
+              <input
+                id="collection-name-input"
+                type="text"
+                placeholder="Floor 1, Chapter 2, Prototype Set A"
+                maxlength="48"
+              />
+            </label>
+            <button id="create-collection-button" class="action action--compact">
+              Create Collection
+            </button>
+          </div>
+          <div id="collection-filter" class="collection-filter"></div>
+          <div id="project-list" class="project-list"></div>
+        </section>
+
+        <section class="panel panel--inspector">
+          <div class="panel__header">
+            <p class="panel__eyebrow">Inspector</p>
+            <h2>Current Project</h2>
+          </div>
+          <label class="field">
+            <span>Project name</span>
+            <input id="active-project-name" type="text" maxlength="60" />
+          </label>
+          <label class="field">
+            <span>Collection</span>
+            <select id="active-project-collection"></select>
+          </label>
+          <div class="metadata-editor">
+            <div class="metadata-editor__header">
+              <p class="panel__eyebrow">Room Metadata</p>
+              <h3>Design Brief</h3>
+            </div>
+            <div class="metadata-grid">
+              <label class="field">
+                <span>Room type</span>
+                <select id="metadata-room-type"></select>
+              </label>
+              <label class="field">
+                <span>Reward type</span>
+                <select id="metadata-reward-type"></select>
+              </label>
+              <label class="field">
+                <span>Difficulty</span>
+                <select id="metadata-difficulty"></select>
+              </label>
+              <label class="field">
+                <span>Intended entry</span>
+                <select id="metadata-entry-direction"></select>
+              </label>
+              <label class="field">
+                <span>Prototype status</span>
+                <select id="metadata-prototype-status"></select>
+              </label>
+              <label class="field">
+                <span>Chapter / floor</span>
+                <input
+                  id="metadata-chapter-floor"
+                  type="text"
+                  placeholder="Chapter 1 · Basement"
+                  maxlength="80"
+                />
+              </label>
+              <label class="field field--wide">
+                <span>Tags</span>
+                <input
+                  id="metadata-tags"
+                  type="text"
+                  placeholder="early-game, key-room, trap-heavy"
+                  maxlength="180"
+                />
+              </label>
+              <label class="field field--wide">
+                <span>Encounter purpose</span>
+                <input
+                  id="metadata-encounter-purpose"
+                  type="text"
+                  placeholder="Teach diagonal dodging while rewarding side exploration"
+                  maxlength="140"
+                />
+              </label>
+              <label class="field field--wide">
+                <span>Notes</span>
+                <textarea
+                  id="metadata-notes"
+                  rows="4"
+                  placeholder="Designer notes, tuning ideas, playtest observations..."
+                  maxlength="1200"
+                ></textarea>
+              </label>
+            </div>
+          </div>
+          <div id="stats-panel" class="stats-panel"></div>
+        </section>
+
+        <section class="panel panel--actions">
+          <div class="panel__header">
+            <p class="panel__eyebrow">Actions</p>
+            <h2>Data</h2>
+          </div>
+          <div class="action-stack">
+            <button id="undo-button" class="action">
+              Undo
+            </button>
+            <button id="redo-button" class="action">
+              Redo
+            </button>
+            <button id="mirror-horizontal-button" class="action">
+              Mirror Horizontal
+            </button>
+            <button id="mirror-vertical-button" class="action">
+              Mirror Vertical
+            </button>
+            <button id="rotate-clockwise-button" class="action">
+              Rotate Clockwise
+            </button>
+            <button id="rotate-counterclockwise-button" class="action">
+              Rotate Counterclockwise
+            </button>
+            <button id="toggle-door-anchor-helper-button" class="action">
+              Hide Door Anchors
+            </button>
+            <button id="duplicate-project-button" class="action">
+              Duplicate Project
+            </button>
+            <button id="reset-project-button" class="action">
+              Reset Layout
+            </button>
+            <button id="export-project-button" class="action">
+              Export JSON
+            </button>
+            <button id="export-unity-json-button" class="action">
+              Export Unity JSON
+            </button>
+            <button id="export-rcp-json-button" class="action">
+              Export RCP JSON
+            </button>
+            <button id="export-realitykit-usda-button" class="action">
+              Export USDA Scene
+            </button>
+            <button id="export-png-button" class="action">
+              Export PNG
+            </button>
+            <button id="export-jpeg-button" class="action">
+              Export JPEG
+            </button>
+            <button id="export-floor-json-button" class="action">
+              Export Floor JSON
+            </button>
+            <button id="export-floor-png-button" class="action">
+              Export Floor PNG
+            </button>
+            <button id="import-project-button" class="action">
+              Import JSON
+            </button>
+            <button id="delete-project-button" class="action action--danger">
+              Delete Project
+            </button>
+          </div>
+          <input id="import-file-input" type="file" accept=".json" hidden />
+        </section>
+
+        <section class="panel panel--legend">
+          <div class="panel__header">
+            <p class="panel__eyebrow">Legend</p>
+            <h2>Used In Design</h2>
+          </div>
+          <div id="legend-items" class="legend"></div>
+          <div class="hint-list">
+            <p><kbd>B</kbd> brush paint</p>
+            <p><kbd>R</kbd> rectangle paint</p>
+            <p><kbd>Cmd/Ctrl Z</kbd> undo, <kbd>Cmd/Ctrl Shift Z</kbd> redo</p>
+            <p><kbd>1</kbd> ground, <kbd>2</kbd> hole, <kbd>3</kbd> rock</p>
+            <p><kbd>4</kbd> enemy spawn, <kbd>5</kbd> item spawn, <kbd>6</kbd> door, <kbd>7</kbd> secret wall, <kbd>8</kbd> decor</p>
+            <p><kbd>Q W E T Y</kbd> enemy variants, <kbd>Z X C</kbd> decor heights</p>
+            <p>Green centered edge ticks show valid chunk-middle door anchors in the editor only.</p>
+            <p>Wall anchors auto-pick the nearest valid room edge.</p>
+          </div>
+        </section>
+      </section>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
